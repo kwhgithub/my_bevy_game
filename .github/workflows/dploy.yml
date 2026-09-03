@@ -42,8 +42,7 @@ jobs:
           wasm-bindgen --out-dir ./out/ --target web ./target/wasm32-unknown-unknown/release/my_bevy_game.wasm
 
       - name: Create index.html
-        run: |
-          echo '<!doctype html><html lang="en"><body style="margin: 0px;"><script type="module">import init from "./my_bevy_game.js"; init().catch((error) => { if (!error.message.startsWith("Using exceptions for control flow, don\'t mind me. This isn\'t actually an error!")) { throw error; } });</script></body></html>' > ./out/index.html
+        run: cp ./index.html ./out/index.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

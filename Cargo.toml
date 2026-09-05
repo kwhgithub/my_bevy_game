@@ -5,3 +5,16 @@ edition = "2024"
 
 [dependencies]
 bevy = "0.19.1"
+
+# wasm 上 std 的 SystemTime/Instant 未实现（调用即 panic），
+# 用 web_time 代替（内部基于 Date.now() / Performance.now()）
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-time = "1.1"
+
+# 面向 Web 的 release 优化：大幅减小 wasm 体积
+[profile.release]
+opt-level = "z"
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "debuginfo"

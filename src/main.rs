@@ -92,7 +92,14 @@ struct CoinRng(u32);
 
 impl CoinRng {
     fn new() -> Self {
-        // 用系统时间作为种子
+        // 注意：wasm32-unknown-unknown 上 std::time::SystemTime 未实现，
+        // 调用会直接 panic（曾导致 Web 版白屏），wasm 上改用 web_time。
+        #[cfg(target_arch = "wasm32")]
+        let nanos = web_time::SystemTime::now()
+            .duration_since(web_time::SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .subsec_nanos();
+        #[cfg(not(target_arch = "wasm32"))]
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()

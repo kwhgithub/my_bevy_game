@@ -42,15 +42,26 @@ jobs:
           wasm-bindgen --out-dir ./out/ --target web ./target/wasm32-unknown-unknown/release/my_bevy_game.wasm
 
       # 用 wasm-opt 压缩 wasm 体积（91MB -> ~25MB）
-      # 注意：不要用 apt 的 binaryen（版本过旧，-Oz 会损坏 table 声明，
-      # 导致线上 "WebAssembly.Table.grow(): failed to grow table" 白屏），
-      # 改用官方 Releases 的固定新版
+      # 注意：apt 的 binaryen 版本过旧，-Oz 会损坏 table 声明，
+      # 导致线上 "WebAssembly.Table.grow(): failed to grow table" 白屏，
+      # 改用官方 Releases 的固定新版；任何一步失败则回退到未压缩产物
       - name: Optimize wasm with wasm-opt
         run: |
-          curl -sL https://github.com/WebAssembly/binaryen/releases/download/version_123/binaryen-version_123-x86_64-linux.tar.gz | tar xz
-          ./binaryen-version_123-x86_64-linux/bin/wasm-opt --version
+          set -x
+          if ! curl -fSL -o /tmp/binaryen.tar.gz https://github.com/WebAssembly/binaryen/releases/download/version_123/binaryen-version_123-x86_64-linux.tar.gz; then
+            echo "::warning::binaryen 下载失败，跳过压缩（部署未压缩版本）"
+            exit 0
+          fi
+          tar xzf /tmp/binaryen.tar.gz -C /tmp
+          WASM_OPT="$(find /tmp -type f -name wasm-opt -perm -u+x | head -n1)"
+          echo "wasm-opt: $WASM_OPT"
+          "$WASM_OPT" --version
           ls -lh ./out/my_bevy_game_bg.wasm
-          ./binaryen-version_123-x86_64-linux/bin/wasm-opt -Oz --enable-bulk-memory ./out/my_bevy_game_bg.wasm -o ./out/my_bevy_game_bg.wasm
+          if "$WASM_OPT" -Oz ./out/my_bevy_game_bg.wasm -o /tmp/optimized.wasm; then
+            mv /tmp/optimized.wasm ./out/my_bevy_game_bg.wasm
+          else
+            echo "::warning::wasm-opt 失败，保留未压缩版本"
+          fi
           ls -lh ./out/my_bevy_game_bg.wasm
 
       - name: Create index.html and .nojekyll

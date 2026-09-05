@@ -41,12 +41,16 @@ jobs:
           cargo build --release --target wasm32-unknown-unknown
           wasm-bindgen --out-dir ./out/ --target web ./target/wasm32-unknown-unknown/release/my_bevy_game.wasm
 
-      # 用 wasm-opt 压缩 wasm 体积（91MB -> 预期 40~50MB）
+      # 用 wasm-opt 压缩 wasm 体积（91MB -> ~25MB）
+      # 注意：不要用 apt 的 binaryen（版本过旧，-Oz 会损坏 table 声明，
+      # 导致线上 "WebAssembly.Table.grow(): failed to grow table" 白屏），
+      # 改用官方 Releases 的固定新版
       - name: Optimize wasm with wasm-opt
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq binaryen
+          curl -sL https://github.com/WebAssembly/binaryen/releases/download/version_123/binaryen-version_123-x86_64-linux.tar.gz | tar xz
+          ./binaryen-version_123-x86_64-linux/bin/wasm-opt --version
           ls -lh ./out/my_bevy_game_bg.wasm
-          wasm-opt -Oz --enable-bulk-memory ./out/my_bevy_game_bg.wasm -o ./out/my_bevy_game_bg.wasm
+          ./binaryen-version_123-x86_64-linux/bin/wasm-opt -Oz --enable-bulk-memory ./out/my_bevy_game_bg.wasm -o ./out/my_bevy_game_bg.wasm
           ls -lh ./out/my_bevy_game_bg.wasm
 
       - name: Create index.html and .nojekyll
